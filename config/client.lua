@@ -5,18 +5,10 @@ local suits = {}
 for i = 0, 25 do
     suits['diving_gear_' .. i] = {
         components = {
-            [1]  = { drawable = 0,   texture = 0 },
-            [3]  = { drawable = 0,   texture = 0 },
-            [4]  = { drawable = 0,   texture = 3 },
-            [5]  = { drawable = 0,   texture = 0 },
-            [6]  = { drawable = 0,   texture = 0 },
-            [7]  = { drawable = 0,   texture = 0 },
-            [8]  = { drawable = 215, texture = 8 },
-            [9]  = { drawable = 0,   texture = 0 },
-            [11] = { drawable = 0,   texture = i },  -- Unterhemd texture variant
+            [8] = { drawable = 215, texture = i },  -- Flasche am Rücken texture variant
         },
         props = {
-            [1] = { drawable = 34, texture = i },    -- Brille texture variant
+            [1] = { drawable = 34, texture = i }, -- Brille texture variant
         },
         label = 'Diving Gear (Variant ' .. i .. ')'
     }
