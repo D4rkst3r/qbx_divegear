@@ -20,15 +20,16 @@ exports.qbx_core:CreateUseableItem('diving_fill', function(source)
     end
 end)
 
--- Client updates oxygen level → save to item metadata
+-- Client updates oxygen level → save to item metadata (remove + re-add with new metadata)
 RegisterNetEvent('qbx_divegear:server:updateOxygen', function(itemName, oxygen)
     local source = source
-    local item = exports.ox_inventory:GetItem(source, itemName, nil, true)
-    if not item then return end
+    local items = exports.ox_inventory:Search(source, 'slots', itemName)
+    if not items or not items[1] then return end
 
-    exports.ox_inventory:SetItemMetadata(source, item.slot, {
+    local slot = items[1].slot
+    exports.ox_inventory:RemoveItem(source, itemName, 1, nil, slot)
+    exports.ox_inventory:AddItem(source, itemName, 1, {
         oxygen = oxygen,
-        durability = oxygen, -- ox_inventory zeigt durability als Balken an
-        label = 'Oxygen: ' .. oxygen .. ' / 100'
-    })
+        durability = oxygen,
+    }, slot)
 end)
