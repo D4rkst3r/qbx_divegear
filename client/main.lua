@@ -86,14 +86,16 @@ end
 
 local function startOxygenLevelDecrementerThread()
     CreateThread(function()
+        print('^2[qbx_divegear] Oxygen decay thread started^7')
         while currentGear.maskAndTank do
             Wait(1000)
             if IsPedSwimming(cache.ped) and currentGear.enabled then
                 oxygenLevel = math.max(oxygenLevel - Config.client.decayRate, 0)
+                print('^3[qbx_divegear] Oxygen: ' .. oxygenLevel .. '^7')
 
                 if oxygenLevel <= 0 then
                     disableScuba()
-                    TriggerEvent('ox_lib:notify', {
+                    lib.notify({
                         title = locale('oxygen_depleted'),
                         type = 'error'
                     })
@@ -106,13 +108,14 @@ end
 local function startOxygenLevelDrawTextThread()
     CreateThread(function()
         while currentGear.maskAndTank do
-            Wait(0)
+            Wait(100)
             if IsPedSwimming(cache.ped) then
-                BeginScaleformMovieMethod(RequestScaleformMovie("OXYGEN"))
-                PushScaleformMovieFunctionVoid("SET_SPEED")
-                PushScaleformMovieFunctionFloat(oxygenLevel / Config.client.startingOxygenLevel)
-                local scaleform = EndScaleformMovieMethod()
-                DrawScaleformMovieFullscreen(scaleform, 255, 255, 255, 255, 0)
+                local oxygenPercent = math.floor((oxygenLevel / Config.client.startingOxygenLevel) * 100)
+
+                -- Display oxygen bar using draw text
+                BeginTextCommandDisplayHelp("STRING")
+                AddTextComponentString("~b~OXYGEN: ~s~" .. oxygenPercent .. "%")
+                EndTextCommandDisplayHelp(0, false, true, -1)
             end
         end
     end)
