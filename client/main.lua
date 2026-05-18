@@ -1,5 +1,20 @@
 local config = require 'config.client'
 
+-- Simple locale function
+local function locale(key, args)
+    local strings = {
+        ['error.underwater'] = 'Cannot refill underwater',
+        ['error.need_otube'] = 'You need an oxygen tube',
+        ['error.not_standing_up'] = 'You must be standing on ground',
+        ['info.filling_air'] = 'Filling oxygen tank...',
+        ['info.pullout_suit'] = 'Taking off suit...',
+        ['info.put_suit'] = 'Putting on suit...',
+        ['success.tube_filled'] = 'Oxygen tank filled',
+        ['success.took_out'] = 'Suit removed',
+    }
+    return strings[key] or key
+end
+
 local currentGear = {
     mask = 0,
     tank = 0,
