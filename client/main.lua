@@ -115,11 +115,10 @@ local function startOxygenLevelDrawTextThread()
     CreateThread(function()
         while currentGear.enabled do
             if IsPedSwimmingUnderWater(cache.ped) then
-                qbx.drawText2d({
-                    text = oxygenLevel..'⏱',
-                    coords = vec2(1.0, 1.42),
-                    scale = 0.45
-                })
+                -- Simple oxygen level display
+                BeginTextCommandDisplayHelp("STRING")
+                AddTextComponentString("~b~OXYGEN: ~s~" .. oxygenLevel)
+                EndTextCommandDisplayHelp(0, false, true, -1)
             end
             Wait(0)
         end
