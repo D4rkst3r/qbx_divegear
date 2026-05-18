@@ -1,3 +1,23 @@
+-- Localization strings
+local locales = {
+    ['already_equipped'] = 'Suit already equipped',
+    ['cannot_equip_underwater'] = 'Cannot equip suit underwater',
+    ['cannot_equip_in_vehicle'] = 'Cannot equip suit in vehicle',
+    ['putting_on_suit'] = 'Putting on suit...',
+    ['suit_equipped'] = 'Suit equipped',
+    ['no_suit_equipped'] = 'No suit equipped',
+    ['taking_off_suit'] = 'Taking off suit...',
+    ['suit_removed'] = 'Suit removed',
+    ['cannot_refill_underwater'] = 'Cannot refill underwater',
+    ['refilling_tank'] = 'Refilling tank...',
+    ['tank_refilled'] = 'Tank refilled',
+    ['oxygen_depleted'] = 'Oxygen depleted!'
+}
+
+local function locale(key)
+    return locales[key] or key
+end
+
 local currentGear = {
     maskAndTank = false,
     enabled = false,
