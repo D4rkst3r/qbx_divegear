@@ -16,7 +16,8 @@ local function locale(key, args)
 end
 
 local currentGear = {
-    enabled = false
+    enabled = false,
+    itemName = nil,
 }
 
 local savedOutfit = {}
@@ -107,6 +108,9 @@ local function takeOffSuit()
         SetEnableScuba(cache.ped, false)
         SetPedMaxTimeUnderwater(cache.ped, 50.00)
         currentGear.enabled = false
+        -- Save oxygen to item metadata before removing
+        TriggerServerEvent('qbx_divegear:server:updateOxygen', currentGear.itemName, oxygenLevel)
+        currentGear.itemName = nil
         deleteGear()
         exports.qbx_core:Notify(locale('success.took_out'))
         -- Stop breathing suit audio
@@ -129,6 +133,7 @@ end
 
 local function startOxygenLevelDecrementerThread()
     CreateThread(function()
+        local updateTick = 0
         while currentGear.enabled do
             if IsPedSwimmingUnderWater(cache.ped) and oxygenLevel > 0 then
                 oxygenLevel -= config.decayRate
@@ -140,12 +145,21 @@ local function startOxygenLevelDecrementerThread()
                     -- Stop breathing suit audio
                 end
             end
+
+            -- Update item metadata every 10 seconds
+            updateTick += 1
+            if updateTick >= 10 then
+                updateTick = 0
+                TriggerServerEvent('qbx_divegear:server:updateOxygen', currentGear.itemName, oxygenLevel)
+            end
+
             Wait(1000)
         end
     end)
 end
 
-local function putOnSuit(suitKey)
+local function putOnSuit(suitKey, savedOxygen)
+    oxygenLevel = savedOxygen or config.startingOxygenLevel
     if oxygenLevel <= 0 then
         exports.qbx_core:Notify(locale('error.need_otube'), 'error')
         return
@@ -171,16 +185,17 @@ local function putOnSuit(suitKey)
         attachGear(suitKey)
         enableScuba()
         currentGear.enabled = true
+        currentGear.itemName = suitKey
         -- Initiate breathing suit audio
         startOxygenLevelDecrementerThread()
         startOxygenLevelDrawTextThread()
     end
 end
 
-RegisterNetEvent('qbx_divegear:client:useGear', function(suitKey)
+RegisterNetEvent('qbx_divegear:client:useGear', function(suitKey, savedOxygen)
     if currentGear.enabled then
         takeOffSuit()
     else
-        putOnSuit(suitKey)
+        putOnSuit(suitKey, savedOxygen)
     end
 end)
