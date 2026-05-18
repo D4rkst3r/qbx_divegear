@@ -1,61 +1,50 @@
--- Localization strings
-local locales = {
-    ['already_equipped'] = 'Suit already equipped',
-    ['cannot_equip_underwater'] = 'Cannot equip suit underwater',
-    ['cannot_equip_in_vehicle'] = 'Cannot equip suit in vehicle',
-    ['putting_on_suit'] = 'Putting on suit...',
-    ['suit_equipped'] = 'Suit equipped',
-    ['no_suit_equipped'] = 'No suit equipped',
-    ['taking_off_suit'] = 'Taking off suit...',
-    ['suit_removed'] = 'Suit removed',
-    ['cannot_refill_underwater'] = 'Cannot refill underwater',
-    ['refilling_tank'] = 'Refilling tank...',
-    ['tank_refilled'] = 'Tank refilled',
-    ['oxygen_depleted'] = 'Oxygen depleted!'
-}
-
-local function locale(key)
-    return locales[key] or key
-end
-
 local currentGear = {
-    maskId = nil,
-    tankId = nil,
+    maskAndTank = false,
     enabled = false,
 }
 
 local oxygenLevel = 0
+local savedOutfit = {}
 
-local function attachGear()
+local function setGearClothing()
     local playerPed = cache.ped
 
-    -- Attach tank to back (bone 24818)
-    local tankModel = "p_s_scuba_tank_s"
-    lib.requestModel(tankModel)
-    currentGear.tankId = CreateObject(GetHashKey(tankModel), GetEntityCoords(playerPed), true, false, true)
-    AttachEntityToEntity(currentGear.tankId, playerPed, GetPedBoneIndex(playerPed, 24818), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, true, true, false, true, 1, true)
+    -- Save current outfit
+    for i = 0, 11 do
+        savedOutfit[i] = {
+            drawable = GetPedDrawableVariation(playerPed, i),
+            texture = GetPedTextureVariation(playerPed, i)
+        }
+    end
 
-    -- Attach mask to head (bone 12844)
-    local maskModel = "p_d_scuba_mask_s"
-    lib.requestModel(maskModel)
-    currentGear.maskId = CreateObject(GetHashKey(maskModel), GetEntityCoords(playerPed), true, false, true)
-    AttachEntityToEntity(currentGear.maskId, playerPed, GetPedBoneIndex(playerPed, 12844), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, true, true, false, true, 1, true)
+    -- Apply diving suit components
+    local suit = Config.client.defaultDivingSuit
+    for componentId, componentData in pairs(suit.components) do
+        local compId = tonumber(componentId)
+        SetPedComponentVariation(playerPed, compId, componentData.drawable, componentData.texture, 2)
+    end
 
-    lib.notify({
-        title = locale('suit_equipped'),
-        type = 'success'
-    })
+    -- Apply props
+    for propId, propData in pairs(suit.props) do
+        local pId = tonumber(propId)
+        if propData.drawable ~= -1 then
+            SetPedPropIndex(playerPed, pId, propData.drawable, propData.texture, true)
+        end
+    end
 end
 
-local function deleteGear()
-    if currentGear.tankId then
-        DeleteEntity(currentGear.tankId)
-        currentGear.tankId = nil
+local function resetClothing()
+    local playerPed = cache.ped
+
+    -- Restore saved outfit
+    for i = 0, 11 do
+        if savedOutfit[i] then
+            SetPedComponentVariation(playerPed, i, savedOutfit[i].drawable, savedOutfit[i].texture, 2)
+        end
     end
-    if currentGear.maskId then
-        DeleteEntity(currentGear.maskId)
-        currentGear.maskId = nil
-    end
+
+    ClearAllPedProps(playerPed)
+    savedOutfit = {}
 end
 
 local function enableScuba()
@@ -72,17 +61,15 @@ end
 
 local function startOxygenLevelDecrementerThread()
     CreateThread(function()
-        print('^2[qbx_divegear] Oxygen decay thread started^7')
-        while currentGear.tankId do
+        while currentGear.maskAndTank do
             Wait(1000)
             if IsPedSwimming(cache.ped) and currentGear.enabled then
                 oxygenLevel = math.max(oxygenLevel - Config.client.decayRate, 0)
-                print('^3[qbx_divegear] Oxygen: ' .. oxygenLevel .. '^7')
 
                 if oxygenLevel <= 0 then
                     disableScuba()
                     lib.notify({
-                        title = locale('oxygen_depleted'),
+                        title = 'Oxygen depleted!',
                         type = 'error'
                     })
                 end
@@ -93,13 +80,10 @@ end
 
 local function startOxygenLevelDrawTextThread()
     CreateThread(function()
-        print('^2[qbx_divegear] Oxygen display thread started^7')
-        while currentGear.tankId do
+        while currentGear.maskAndTank do
             Wait(100)
             if IsPedSwimming(cache.ped) then
                 local oxygenPercent = math.floor((oxygenLevel / Config.client.startingOxygenLevel) * 100)
-
-                -- Display oxygen bar using draw text
                 BeginTextCommandDisplayHelp("STRING")
                 AddTextComponentString("~b~OXYGEN: ~s~" .. oxygenPercent .. "%")
                 EndTextCommandDisplayHelp(0, false, true, -1)
@@ -109,30 +93,30 @@ local function startOxygenLevelDrawTextThread()
 end
 
 local function putOnSuit()
-    if currentGear.tankId then
+    if currentGear.maskAndTank then
         return lib.notify({
-            title = locale('already_equipped'),
+            title = 'Suit already equipped',
             type = 'info'
         })
     end
 
     if IsEntityInWater(cache.ped) then
         return lib.notify({
-            title = locale('cannot_equip_underwater'),
+            title = 'Cannot equip underwater',
             type = 'error'
         })
     end
 
     if GetVehiclePedIsIn(cache.ped) ~= 0 then
         return lib.notify({
-            title = locale('cannot_equip_in_vehicle'),
+            title = 'Cannot equip in vehicle',
             type = 'error'
         })
     end
 
     if lib.progressBar({
         duration = Config.client.putOnSuitTimeMs,
-        label = locale('putting_on_suit'),
+        label = 'Putting on suit...',
         useWhileDead = false,
         canCancel = false,
         disable = {
@@ -146,24 +130,29 @@ local function putOnSuit()
         }
     }) then
         oxygenLevel = Config.client.startingOxygenLevel
-        attachGear()
+        currentGear.maskAndTank = true
+        setGearClothing()
         enableScuba()
         startOxygenLevelDecrementerThread()
         startOxygenLevelDrawTextThread()
+        lib.notify({
+            title = 'Suit equipped',
+            type = 'success'
+        })
     end
 end
 
 local function takeOffSuit()
-    if not currentGear.tankId then
+    if not currentGear.maskAndTank then
         return lib.notify({
-            title = locale('no_suit_equipped'),
+            title = 'No suit equipped',
             type = 'info'
         })
     end
 
     if lib.progressBar({
         duration = Config.client.takeOffSuitTimeMs,
-        label = locale('taking_off_suit'),
+        label = 'Taking off suit...',
         useWhileDead = false,
         canCancel = false,
         disable = {
@@ -177,34 +166,34 @@ local function takeOffSuit()
         }
     }) then
         disableScuba()
-        deleteGear()
+        currentGear.maskAndTank = false
         oxygenLevel = 0
-
+        resetClothing()
         lib.notify({
-            title = locale('suit_removed'),
+            title = 'Suit removed',
             type = 'success'
         })
     end
 end
 
 local function fillTank()
-    if not currentGear.tankId then
+    if not currentGear.maskAndTank then
         return lib.notify({
-            title = locale('no_suit_equipped'),
+            title = 'No suit equipped',
             type = 'error'
         })
     end
 
     if IsEntityInWater(cache.ped) then
         return lib.notify({
-            title = locale('cannot_refill_underwater'),
+            title = 'Cannot refill underwater',
             type = 'error'
         })
     end
 
     if lib.progressBar({
         duration = Config.client.refillTankTimeMs,
-        label = locale('refilling_tank'),
+        label = 'Refilling tank...',
         useWhileDead = false,
         canCancel = false,
         disable = {
@@ -215,22 +204,21 @@ local function fillTank()
     }) then
         oxygenLevel = Config.client.startingOxygenLevel
         lib.notify({
-            title = locale('tank_refilled'),
+            title = 'Tank refilled',
             type = 'success'
         })
     end
 end
 
 RegisterNetEvent('qbx_divegear:client:useGear', function()
-    if currentGear.tankId then
+    if currentGear.maskAndTank then
         takeOffSuit()
     else
         putOnSuit()
     end
 end)
 
--- Callback for tank refill
-lib.callback.register('qbx_divegear:fillTank', function(source, cb)
+lib.callback.register('qbx_divegear:client:fillTank', function(source, cb)
     fillTank()
     cb(true)
 end)
