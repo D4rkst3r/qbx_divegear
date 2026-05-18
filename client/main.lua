@@ -19,57 +19,43 @@ local function locale(key)
 end
 
 local currentGear = {
-    maskAndTank = false,
+    maskId = nil,
+    tankId = nil,
     enabled = false,
-    currentSuit = nil,
 }
 
 local oxygenLevel = 0
-local savedClothes = {}
 
-local function setGearOutfit(outfit)
-    if not outfit then return end
-
+local function attachGear()
     local playerPed = cache.ped
 
-    -- Save current clothes before changing
-    for i = 0, 11 do
-        savedClothes[tostring(i)] = {
-            drawable = GetPedDrawableVariation(playerPed, i),
-            texture = GetPedTextureVariation(playerPed, i)
-        }
-    end
+    -- Attach tank to back (bone 24818)
+    local tankModel = "p_s_scuba_tank_o"
+    lib.requestModel(tankModel)
+    currentGear.tankId = CreateObject(GetHashKey(tankModel), GetEntityCoords(playerPed), true, false, true)
+    AttachEntityToEntity(currentGear.tankId, playerPed, GetPedBoneIndex(playerPed, 24818), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, true, true, false, true, 1, true)
 
-    -- Apply all components from the outfit
-    for componentId, componentData in pairs(outfit.components) do
-        local compId = tonumber(componentId)
-        SetPedComponentVariation(playerPed, compId, componentData.drawable, componentData.texture, 2)
-    end
+    -- Attach mask to head (bone 12844)
+    local maskModel = "p_s_scuba_mask_o"
+    lib.requestModel(maskModel)
+    currentGear.maskId = CreateObject(GetHashKey(maskModel), GetEntityCoords(playerPed), true, false, true)
+    AttachEntityToEntity(currentGear.maskId, playerPed, GetPedBoneIndex(playerPed, 12844), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, true, true, false, true, 1, true)
 
-    -- Apply props (masks, helmets, etc)
-    for propId, propData in pairs(outfit.props) do
-        local pId = tonumber(propId)
-        if propData.drawable ~= -1 then
-            SetPedPropIndex(playerPed, pId, propData.drawable, propData.texture, true)
-        end
-    end
-
-    currentGear.currentSuit = outfit
+    lib.notify({
+        title = locale('suit_equipped'),
+        type = 'success'
+    })
 end
 
-local function resetClothes()
-    local playerPed = cache.ped
-
-    -- Restore saved clothes
-    for componentId, componentData in pairs(savedClothes) do
-        local compId = tonumber(componentId)
-        SetPedComponentVariation(playerPed, compId, componentData.drawable, componentData.texture, 2)
+local function deleteGear()
+    if currentGear.tankId then
+        DeleteEntity(currentGear.tankId)
+        currentGear.tankId = nil
     end
-
-    -- Clear props
-    ClearAllPedProps(playerPed)
-    savedClothes = {}
-    currentGear.currentSuit = nil
+    if currentGear.maskId then
+        DeleteEntity(currentGear.maskId)
+        currentGear.maskId = nil
+    end
 end
 
 local function enableScuba()
@@ -87,7 +73,7 @@ end
 local function startOxygenLevelDecrementerThread()
     CreateThread(function()
         print('^2[qbx_divegear] Oxygen decay thread started^7')
-        while currentGear.maskAndTank do
+        while currentGear.tankId do
             Wait(1000)
             if IsPedSwimming(cache.ped) and currentGear.enabled then
                 oxygenLevel = math.max(oxygenLevel - Config.client.decayRate, 0)
@@ -107,7 +93,8 @@ end
 
 local function startOxygenLevelDrawTextThread()
     CreateThread(function()
-        while currentGear.maskAndTank do
+        print('^2[qbx_divegear] Oxygen display thread started^7')
+        while currentGear.tankId do
             Wait(100)
             if IsPedSwimming(cache.ped) then
                 local oxygenPercent = math.floor((oxygenLevel / Config.client.startingOxygenLevel) * 100)
@@ -121,8 +108,8 @@ local function startOxygenLevelDrawTextThread()
     end)
 end
 
-local function putOnSuit(suitVariant)
-    if currentGear.maskAndTank then
+local function putOnSuit()
+    if currentGear.tankId then
         return lib.notify({
             title = locale('already_equipped'),
             type = 'info'
@@ -143,8 +130,6 @@ local function putOnSuit(suitVariant)
         })
     end
 
-    local suit = suitVariant or Config.client.defaultDivingSuit
-
     if lib.progressBar({
         duration = Config.client.putOnSuitTimeMs,
         label = locale('putting_on_suit'),
@@ -161,24 +146,15 @@ local function putOnSuit(suitVariant)
         }
     }) then
         oxygenLevel = Config.client.startingOxygenLevel
-        currentGear.maskAndTank = true
-
-        -- Apply complete diving suit outfit
-        setGearOutfit(suit)
+        attachGear()
         enableScuba()
         startOxygenLevelDecrementerThread()
         startOxygenLevelDrawTextThread()
-
-        lib.notify({
-            title = locale('suit_equipped'),
-            description = suit.label,
-            type = 'success'
-        })
     end
 end
 
 local function takeOffSuit()
-    if not currentGear.maskAndTank then
+    if not currentGear.tankId then
         return lib.notify({
             title = locale('no_suit_equipped'),
             type = 'info'
@@ -201,11 +177,8 @@ local function takeOffSuit()
         }
     }) then
         disableScuba()
-        currentGear.maskAndTank = false
+        deleteGear()
         oxygenLevel = 0
-
-        -- Reset to saved clothes
-        resetClothes()
 
         lib.notify({
             title = locale('suit_removed'),
@@ -215,7 +188,7 @@ local function takeOffSuit()
 end
 
 local function fillTank()
-    if not currentGear.maskAndTank then
+    if not currentGear.tankId then
         return lib.notify({
             title = locale('no_suit_equipped'),
             type = 'error'
@@ -248,11 +221,11 @@ local function fillTank()
     end
 end
 
-RegisterNetEvent('qbx_divegear:client:useGear', function(suitVariant)
-    if currentGear.maskAndTank then
+RegisterNetEvent('qbx_divegear:client:useGear', function()
+    if currentGear.tankId then
         takeOffSuit()
     else
-        putOnSuit(suitVariant)
+        putOnSuit()
     end
 end)
 

@@ -22,7 +22,6 @@ Config.client = {
             ["7"] = { drawable = 140, texture = 0 }    -- Neck
         },
         props = {
-            ["0"] = { drawable = -1, texture = 0 },
             ["1"] = { drawable = 34, texture = 3 }     -- Diving mask/helmet prop
         },
         label = "Standard Diving Suit"
