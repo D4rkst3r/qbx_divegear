@@ -69,8 +69,10 @@ local function deleteGear()
     savedOutfit = {}
 end
 
-local function attachGear()
+local function attachGear(suitKey)
     local playerPed = cache.ped
+    local suit = config.divingSuits[suitKey] or config.divingSuits['diving_gear_0']
+
     -- Save current outfit
     for i = 0, 11 do
         savedOutfit[i] = {
@@ -78,18 +80,16 @@ local function attachGear()
             texture = GetPedTextureVariation(playerPed, i)
         }
     end
-    -- Apply diving suit components
-    SetPedComponentVariation(playerPed, 1,  0,   0, 2)
-    SetPedComponentVariation(playerPed, 3,  0,   0, 2)
-    SetPedComponentVariation(playerPed, 4,  0,   3, 2)
-    SetPedComponentVariation(playerPed, 5,  0,   0, 2)
-    SetPedComponentVariation(playerPed, 6,  0,   0, 2)
-    SetPedComponentVariation(playerPed, 7,  0,   0, 2)
-    SetPedComponentVariation(playerPed, 8,  215, 8, 2)
-    SetPedComponentVariation(playerPed, 9,  0,   0, 2)
-    SetPedComponentVariation(playerPed, 11, 0,   0, 2)
-    -- Apply diving mask as prop (slot 1)
-    SetPedPropIndex(playerPed, 1, 34, 3, true)
+
+    -- Apply components from suit variant
+    for compId, data in pairs(suit.components) do
+        SetPedComponentVariation(playerPed, compId, data.drawable, data.texture, 2)
+    end
+
+    -- Apply props from suit variant
+    for propId, data in pairs(suit.props) do
+        SetPedPropIndex(playerPed, propId, data.drawable, data.texture, true)
+    end
 end
 
 local function takeOffSuit()
@@ -145,7 +145,7 @@ local function startOxygenLevelDecrementerThread()
     end)
 end
 
-local function putOnSuit()
+local function putOnSuit(suitKey)
     if oxygenLevel <= 0 then
         exports.qbx_core:Notify(locale('error.need_otube'), 'error')
         return
@@ -168,7 +168,7 @@ local function putOnSuit()
         }
     }) then
         deleteGear()
-        attachGear()
+        attachGear(suitKey)
         enableScuba()
         currentGear.enabled = true
         -- Initiate breathing suit audio
@@ -177,10 +177,10 @@ local function putOnSuit()
     end
 end
 
-RegisterNetEvent('qbx_divegear:client:useGear', function()
+RegisterNetEvent('qbx_divegear:client:useGear', function(suitKey)
     if currentGear.enabled then
         takeOffSuit()
     else
-        putOnSuit()
+        putOnSuit(suitKey)
     end
 end)
