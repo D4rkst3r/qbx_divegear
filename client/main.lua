@@ -50,7 +50,6 @@ local function setGearOutfit(outfit)
     for propId, propData in pairs(outfit.props) do
         local pId = tonumber(propId)
         if propData.drawable ~= -1 then
-            GivePedScaleformHelmet(playerPed)
             SetPedPropIndex(playerPed, pId, propData.drawable, propData.texture, true)
         end
     end
