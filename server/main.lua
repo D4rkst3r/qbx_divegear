@@ -3,8 +3,11 @@ for i = 0, 25 do
     local itemName = 'diving_gear_' .. i
     exports.qbx_core:CreateUseableItem(itemName, function(source)
         -- Read current oxygen from item metadata
-        local item = exports.ox_inventory:GetItem(source, itemName, nil, true)
-        local oxygen = item?.metadata?.oxygen or 100
+        local items = exports.ox_inventory:Search(source, 'slots', itemName)
+        local oxygen = 100
+        if items and items[1] and items[1].metadata then
+            oxygen = items[1].metadata.oxygen or 100
+        end
         TriggerClientEvent('qbx_divegear:client:useGear', source, itemName, oxygen)
     end)
 end
