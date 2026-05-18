@@ -30,13 +30,13 @@ local function attachGear()
     local playerPed = cache.ped
 
     -- Attach tank to back (bone 24818)
-    local tankModel = "p_s_scuba_tank_o"
+    local tankModel = "p_s_scuba_tank_s"
     lib.requestModel(tankModel)
     currentGear.tankId = CreateObject(GetHashKey(tankModel), GetEntityCoords(playerPed), true, false, true)
     AttachEntityToEntity(currentGear.tankId, playerPed, GetPedBoneIndex(playerPed, 24818), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, true, true, false, true, 1, true)
 
     -- Attach mask to head (bone 12844)
-    local maskModel = "p_s_scuba_mask_o"
+    local maskModel = "p_d_scuba_mask_s"
     lib.requestModel(maskModel)
     currentGear.maskId = CreateObject(GetHashKey(maskModel), GetEntityCoords(playerPed), true, false, true)
     AttachEntityToEntity(currentGear.maskId, playerPed, GetPedBoneIndex(playerPed, 12844), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, true, true, false, true, 1, true)
