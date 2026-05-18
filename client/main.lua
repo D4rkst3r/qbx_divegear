@@ -16,10 +16,10 @@ local function locale(key, args)
 end
 
 local currentGear = {
-    mask = 0,
-    tank = 0,
     enabled = false
 }
+
+local savedOutfit = {}
 
 local oxygenLevel = 0
 
@@ -60,34 +60,36 @@ lib.callback.register('qbx_divegear:client:fillTank', function()
 end)
 
 local function deleteGear()
-	if currentGear.mask ~= 0 then
-        DetachEntity(currentGear.mask, false, true)
-        DeleteEntity(currentGear.mask)
-		currentGear.mask = 0
+    local playerPed = cache.ped
+    -- Restore saved outfit
+    for compId, data in pairs(savedOutfit) do
+        SetPedComponentVariation(playerPed, compId, data.drawable, data.texture, 2)
     end
-
-	if currentGear.tank ~= 0 then
-        DetachEntity(currentGear.tank, false, true)
-        DeleteEntity(currentGear.tank)
-		currentGear.tank = 0
-	end
+    ClearAllPedProps(playerPed)
+    savedOutfit = {}
 end
 
 local function attachGear()
-    local maskModel = `p_d_scuba_mask_s`
-    local tankModel = `p_s_scuba_tank_s`
-    lib.requestModel(maskModel)
-    lib.requestModel(tankModel)
-
-    currentGear.tank = CreateObject(tankModel, 1.0, 1.0, 1.0, true, true, false)
-    local bone1 = GetPedBoneIndex(cache.ped, 24818)
-    AttachEntityToEntity(currentGear.tank, cache.ped, bone1, -0.25, -0.25, 0.0, 180.0, 90.0, 0.0, true, true, false, false, 2, true)
-
-    currentGear.mask = CreateObject(maskModel, 1.0, 1.0, 1.0, true, true, false)
-    local bone2 = GetPedBoneIndex(cache.ped, 12844)
-    AttachEntityToEntity(currentGear.mask, cache.ped, bone2, 0.0, 0.0, 0.0, 180.0, 90.0, 0.0, true, true, false, false, 2, true)
-    SetModelAsNoLongerNeeded(maskModel)
-    SetModelAsNoLongerNeeded(tankModel)
+    local playerPed = cache.ped
+    -- Save current outfit
+    for i = 0, 11 do
+        savedOutfit[i] = {
+            drawable = GetPedDrawableVariation(playerPed, i),
+            texture = GetPedTextureVariation(playerPed, i)
+        }
+    end
+    -- Apply diving suit components
+    SetPedComponentVariation(playerPed, 1,  0,   0, 2)
+    SetPedComponentVariation(playerPed, 3,  0,   0, 2)
+    SetPedComponentVariation(playerPed, 4,  0,   3, 2)
+    SetPedComponentVariation(playerPed, 5,  0,   0, 2)
+    SetPedComponentVariation(playerPed, 6,  0,   0, 2)
+    SetPedComponentVariation(playerPed, 7,  0,   0, 2)
+    SetPedComponentVariation(playerPed, 8,  215, 8, 2)
+    SetPedComponentVariation(playerPed, 9,  0,   0, 2)
+    SetPedComponentVariation(playerPed, 11, 0,   0, 2)
+    -- Apply diving mask as prop (slot 1)
+    SetPedPropIndex(playerPed, 1, 34, 3, true)
 end
 
 local function takeOffSuit()
